@@ -2,15 +2,6 @@ package com.example.qrcodegenerator.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
-
-import javax.persistence.*;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -23,15 +14,15 @@ public class QRCode {
     private String content;
 
     @ManyToMany
-    @JsonIgnore
     @JoinTable(
-            name = "user_qrcode",
-            joinColumns = @JoinColumn(name = "qrcode_id"),
+            name = "qr_code_user",
+            joinColumns = @JoinColumn(name = "qr_code_id"),
             inverseJoinColumns = @JoinColumn(name = "user_id")
     )
+    @JsonIgnore
     private Set<User> users = new HashSet<>();
 
-    // Getters and Setters
+    // Геттеры и сеттеры
     public Long getId() {
         return id;
     }
