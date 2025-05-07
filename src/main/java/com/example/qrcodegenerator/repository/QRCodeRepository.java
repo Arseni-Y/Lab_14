@@ -11,4 +11,8 @@ public interface QRCodeRepository extends JpaRepository<QRCode, Long> {
 
     @Query("SELECT q FROM QRCode q JOIN q.users u WHERE u = :user")
     List<QRCode> findByUser(@Param("user") User user);
+
+    // Новый кастомный запрос для поиска QR-кодов по содержимому (LIKE)
+    @Query("SELECT q FROM QRCode q WHERE q.content LIKE %:content%")
+    List<QRCode> findByContentContaining(@Param("content") String content);
 }

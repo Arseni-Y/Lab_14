@@ -1,5 +1,6 @@
 package com.example.qrcodegenerator.service;
 
+import com.example.qrcodegenerator.cache.SimpleCache;
 import com.example.qrcodegenerator.exception.ResourceNotFoundException;
 import com.example.qrcodegenerator.model.QRCode;
 import com.example.qrcodegenerator.model.User;
@@ -15,14 +16,17 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Transactional
 public class QRCodeService {
     private final QRCodeRepository qrCodeRepository;
+    private final SimpleCache cache;
 
-    public QRCodeService(QRCodeRepository qrCodeRepository) {
+    public QRCodeService(QRCodeRepository qrCodeRepository, SimpleCache cache) {
         this.qrCodeRepository = qrCodeRepository;
+        this.cache = cache;
     }
 
     public byte[] generateQRCode(String text) throws WriterException, IOException {
@@ -58,5 +62,24 @@ public class QRCodeService {
     @Transactional(readOnly = true)
     public List<QRCode> findByUser(User user) {
         return qrCodeRepository.findByUser(user);
+    }
+
+    @Transactional(readOnly = true)
+    public List<QRCode> findByContentContaining(String content) {
+        String cacheKey = "qrcodes-content-" + content;
+
+        Optional<Object> cachedResult = cache.get(cacheKey);
+        if (cachedResult.isPresent()) {
+            return (List<QRCode>) cachedResult.get();
+        }
+
+        List<QRCode> result = qrCodeRepository.findByContentContaining(content);
+        cache.put(cacheKey, result);
+        return result;
+    }
+
+    public void clearContentSearchCache(String content) {
+        String cacheKey = "qrcodes-content-" + content;
+        cache.remove(cacheKey);
     }
 }

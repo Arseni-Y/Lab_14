@@ -46,4 +46,17 @@ public class UserController {
         userService.deleteById(id);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<User>> searchUsersByName(@RequestParam String namePart) {
+        List<User> users = userService.findByNameContaining(namePart);
+        return ResponseEntity.ok(users);
+    }
+
+    @GetMapping("/by-email")
+    public ResponseEntity<User> getUserByEmail(@RequestParam String email) {
+        return userService.findByEmailWithCache(email)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
 }

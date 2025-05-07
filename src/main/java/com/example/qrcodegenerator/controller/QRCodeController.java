@@ -116,4 +116,20 @@ public class QRCodeController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(QRCodeMapper.toDTO(savedQRCode));
     }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<QRCodeResponse>> searchQRCodesByContent(
+            @RequestParam String content,
+            @RequestParam(required = false, defaultValue = "false") boolean clearCache) {
+
+        if (clearCache) {
+            qrCodeService.clearContentSearchCache(content);
+        }
+
+        List<QRCodeResponse> response = qrCodeService.findByContentContaining(content).stream()
+                .map(QRCodeMapper::toDTO)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(response);
+    }
 }
