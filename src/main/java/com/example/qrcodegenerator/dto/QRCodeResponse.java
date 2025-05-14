@@ -4,7 +4,7 @@ public class QRCodeResponse {
     private Long id;
     private String data;
 
-    // Геттеры и сеттеры
+
     public Long getId() {
         return id;
     }
