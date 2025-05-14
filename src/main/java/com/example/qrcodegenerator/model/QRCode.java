@@ -22,7 +22,6 @@ public class QRCode {
     @JsonIgnore
     private Set<User> users = new HashSet<>();
 
-    // Геттеры и сеттеры
     public Long getId() {
         return id;
     }
