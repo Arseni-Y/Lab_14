@@ -2,15 +2,13 @@ package com.example.qrcodegenerator.repository;
 
 import com.example.qrcodegenerator.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+
 import java.util.List;
 import java.util.Optional;
 
-public interface UserRepository extends JpaRepository<User, Long> {
-    Optional<User> findByEmail(String email);
-    boolean existsByEmail(String email);
+public interface UserRepository extends JpaRepository<User, Long>
+{
+    List<User> findByNameContaining(String namePart);
 
-    @Query("SELECT u FROM User u WHERE LOWER(u.name) LIKE LOWER(concat('%', :namePart,'%'))")
-    List<User> findByNameContainingIgnoreCase(@Param("namePart") String namePart);
+    Optional<User> findByEmail(String email);
 }

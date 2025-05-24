@@ -1,119 +1,91 @@
 package com.example.qrcodegenerator.service;
 
-import com.example.qrcodegenerator.cache.SimpleCache;
-import com.example.qrcodegenerator.exception.ResourceNotFoundException;
 import com.example.qrcodegenerator.model.QRCode;
 import com.example.qrcodegenerator.model.User;
 import com.example.qrcodegenerator.repository.QRCodeRepository;
+import com.example.qrcodegenerator.util.SimpleCache;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.WriterException;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
+@Slf4j
 @Service
-@Transactional
-public class QRCodeService {
+public class QRCodeService
+{
     private final QRCodeRepository qrCodeRepository;
-    private final SimpleCache cache;
+    private final SimpleCache<String, List<QRCode>> contentSearchCache;
 
-    public QRCodeService(QRCodeRepository qrCodeRepository, SimpleCache cache) {
+    public QRCodeService(QRCodeRepository qrCodeRepository,
+                         SimpleCache<String, List<QRCode>> contentSearchCache)
+    {
         this.qrCodeRepository = qrCodeRepository;
-        this.cache = cache;
+        this.contentSearchCache = contentSearchCache;
     }
 
-    public byte[] generateQRCode(String text) throws WriterException, IOException {
-        String cacheKey = "qrCodeImage:" + text;
-        Optional<Object> cached = cache.get(cacheKey);
-        if (cached.isPresent()) {
-            return (byte[]) cached.get();
-        }
-
+    public byte[] generateQRCode(String text) throws WriterException, IOException
+    {
         QRCodeWriter qrCodeWriter = new QRCodeWriter();
-        BitMatrix bitMatrix = qrCodeWriter.encode(text, BarcodeFormat.QR_CODE, 350, 350);
+        BitMatrix bitMatrix = qrCodeWriter.encode(text, BarcodeFormat.QR_CODE,
+                350, 350);
+
         ByteArrayOutputStream pngOutputStream = new ByteArrayOutputStream();
         MatrixToImageWriter.writeToStream(bitMatrix, "PNG", pngOutputStream);
-        byte[] result = pngOutputStream.toByteArray();
-        cache.put(cacheKey, result);
-        return result;
+        return pngOutputStream.toByteArray();
     }
 
-    @Transactional(readOnly = true)
-    public List<QRCode> findAll() {
-        String cacheKey = "allQRCodes";
-        Optional<Object> cached = cache.get(cacheKey);
-        if (cached.isPresent()) {
-            return (List<QRCode>) cached.get();
-        }
-
-        List<QRCode> result = qrCodeRepository.findAll();
-        cache.put(cacheKey, result);
-        return result;
+    public List<QRCode> findAll()
+    {
+        return qrCodeRepository.findAll();
     }
 
-    public QRCode save(QRCode qrCode) {
-        QRCode saved = qrCodeRepository.save(qrCode);
-        cache.clear();
-        return saved;
+    public QRCode save(QRCode qrCode)
+    {
+        return qrCodeRepository.save(qrCode);
     }
 
-    @Transactional(readOnly = true)
-    public QRCode getById(Long id) {
-        String cacheKey = "qrCodeById:" + id;
-        Optional<Object> cached = cache.get(cacheKey);
-        if (cached.isPresent()) {
-            return (QRCode) cached.get();
-        }
-
-        QRCode result = qrCodeRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("QRCode not found with id: " + id));
-        cache.put(cacheKey, result);
-        return result;
+    public QRCode getById(Long id)
+    {
+        return qrCodeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("QRCode not found with id: " +
+                        id));
     }
 
-    public void deleteById(Long id) {
-        if (!qrCodeRepository.existsById(id)) {
-            throw new ResourceNotFoundException("QRCode not found with id: " + id);
-        }
+    public void deleteById(Long id)
+    {
         qrCodeRepository.deleteById(id);
-        cache.remove("qrCodeById:" + id);
-        cache.clear();
     }
 
-    @Transactional(readOnly = true)
-    public List<QRCode> findByUser(User user) {
-        String cacheKey = "qrCodesByUser:" + user.getId();
-        Optional<Object> cached = cache.get(cacheKey);
-        if (cached.isPresent()) {
-            return (List<QRCode>) cached.get();
+    public List<QRCode> findByUser(User user)
+    {
+        return user.getQrCodes().stream().collect(Collectors.toList());
+    }
+
+    public List<QRCode> findByDataContaining(String data)
+    {
+        List<QRCode> cachedResult = contentSearchCache.get(data);
+        if (cachedResult != null)
+        {
+            log.info("Returning cached result for content search: {}", data);
+            return cachedResult;
         }
 
-        List<QRCode> result = qrCodeRepository.findByUser(user);
-        cache.put(cacheKey, result);
+        List<QRCode> result = qrCodeRepository.findByDataContaining(data);
+        contentSearchCache.put(data, result);
         return result;
     }
 
-    @Transactional(readOnly = true)
-    public List<QRCode> findByContentContaining(String content) {
-        String cacheKey = "qrcodes-content-" + content;
-        Optional<Object> cached = cache.get(cacheKey);
-        if (cached.isPresent()) {
-            return (List<QRCode>) cached.get();
-        }
-
-        List<QRCode> result = qrCodeRepository.findByContentContaining(content);
-        cache.put(cacheKey, result);
-        return result;
-    }
-
-    public void clearContentSearchCache(String content) {
-        String cacheKey = "qrcodes-content-" + content;
-        cache.remove(cacheKey);
+    public void clearContentSearchCache(String content)
+    {
+        contentSearchCache.remove(content);
+        log.info("Cleared cache for content search: {}", content);
     }
 }

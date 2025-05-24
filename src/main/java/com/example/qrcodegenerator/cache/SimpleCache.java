@@ -1,43 +1,27 @@
-package com.example.qrcodegenerator.cache;
+package com.example.qrcodegenerator.util;
 
 import org.springframework.stereotype.Component;
+
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 @Component
-public class SimpleCache {
-    private final Map<String, Object> cache = new HashMap<>();
+public class SimpleCache<K, V>
+{
+    private final Map<K, V> cache = new HashMap<>();
 
-    public void put(String key, Object value) {
-        if (key == null || value == null) {
-            throw new IllegalArgumentException("Key and value cannot be null");
-        }
-        synchronized (cache) {
-            cache.put(key, value);
-        }
+    public V get(K key)
+    {
+        return cache.get(key);
     }
 
-    public Optional<Object> get(String key) {
-        if (key == null) {
-            return Optional.empty();
-        }
-        synchronized (cache) {
-            return Optional.ofNullable(cache.get(key));
-        }
+    public void put(K key, V value)
+    {
+        cache.put(key, value);
     }
 
-    public void remove(String key) {
-        if (key != null) {
-            synchronized (cache) {
-                cache.remove(key);
-            }
-        }
-    }
-
-    public void clear() {
-        synchronized (cache) {
-            cache.clear();
-        }
+    public void remove(K key)
+    {
+        cache.remove(key);
     }
 }
