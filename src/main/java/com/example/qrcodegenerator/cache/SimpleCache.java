@@ -1,4 +1,4 @@
-package com.example.qrcodegenerator.util;
+package com.example.qrcodegenerator.cache;
 
 import org.springframework.stereotype.Component;
 

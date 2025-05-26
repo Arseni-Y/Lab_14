@@ -43,12 +43,9 @@ public class QRCodeController
 
     @Operation(summary = "Generate QR code image")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200",
-                    description = "QR code image generated successfully"),
-            @ApiResponse(responseCode = "400",
-                    description = "Invalid input parameters"),
-            @ApiResponse(responseCode = "500",
-                    description = "Error generating QR code image")
+            @ApiResponse(responseCode = "200", description = "QR code image generated successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid input parameters"),
+            @ApiResponse(responseCode = "500", description = "Error generating QR code image")
     })
     @GetMapping("/generate")
     public ResponseEntity<byte[]> generateQRCode(
@@ -72,8 +69,7 @@ public class QRCodeController
     }
 
     @Operation(summary = "Get all QR codes")
-    @ApiResponse(responseCode = "200",
-            description = "List of all QR codes retrieved successfully")
+    @ApiResponse(responseCode = "200", description = "List of all QR codes retrieved successfully")
     @GetMapping
     public ResponseEntity<List<QRCodeResponse>> getAllQRCodes()
     {
@@ -86,12 +82,9 @@ public class QRCodeController
 
     @Operation(summary = "Create new QR code")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "201",
-                    description = "QR code created successfully"),
-            @ApiResponse(responseCode = "400",
-                    description = "Invalid input data"),
-            @ApiResponse(responseCode = "404",
-                    description = "User not found")
+            @ApiResponse(responseCode = "201", description = "QR code created successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid input data"),
+            @ApiResponse(responseCode = "404", description = "User not found")
     })
     @PostMapping
     public ResponseEntity<QRCodeResponse> createQRCode(
@@ -116,6 +109,23 @@ public class QRCodeController
                 .body(QRCodeMapper.toDTO(createdQRCode));
     }
 
+    @Operation(summary = "Generate multiple QR codes in bulk")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "QR codes created successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid input data")
+    })
+    @PostMapping("/bulk")
+    public ResponseEntity<List<QRCodeResponse>> createBulkQRCodes(
+            @Parameter(description = "List of QR code creation requests")
+            @Valid @RequestBody List<QRCodeRequest> qrCodeRequests,
+            @Parameter(description = "Optional user ID to associate with QR codes")
+            @RequestParam(required = false) Long userId)
+    {
+        log.info("Creating bulk QR codes, count: {}", qrCodeRequests.size());
+        List<QRCodeResponse> responses = qrCodeService.generateBulkQRCodes(qrCodeRequests, userId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(responses);
+    }
+
     @Operation(summary = "Get QR code by ID")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "QR code found"),
@@ -133,12 +143,9 @@ public class QRCodeController
 
     @Operation(summary = "Update QR code")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200",
-                    description = "QR code updated successfully"),
-            @ApiResponse(responseCode = "400",
-                    description = "Invalid input data"),
-            @ApiResponse(responseCode = "404",
-                    description = "QR code not found")
+            @ApiResponse(responseCode = "200", description = "QR code updated successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid input data"),
+            @ApiResponse(responseCode = "404", description = "QR code not found")
     })
     @PutMapping("/{id}")
     public ResponseEntity<QRCodeResponse> updateQRCode(
@@ -156,10 +163,8 @@ public class QRCodeController
 
     @Operation(summary = "Delete QR code")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "204",
-                    description = "QR code deleted successfully"),
-            @ApiResponse(responseCode = "404",
-                    description = "QR code not found")
+            @ApiResponse(responseCode = "204", description = "QR code deleted successfully"),
+            @ApiResponse(responseCode = "404", description = "QR code not found")
     })
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteQRCode(
@@ -173,10 +178,8 @@ public class QRCodeController
 
     @Operation(summary = "Get QR codes by user")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200",
-                    description = "QR codes retrieved successfully"),
-            @ApiResponse(responseCode = "404",
-                    description = "User not found")
+            @ApiResponse(responseCode = "200", description = "QR codes retrieved successfully"),
+            @ApiResponse(responseCode = "404", description = "User not found")
     })
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<QRCodeResponse>> getQRCodesByUser(
@@ -193,12 +196,9 @@ public class QRCodeController
 
     @Operation(summary = "Add QR code to user")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "201",
-                    description = "QR code added to user successfully"),
-            @ApiResponse(responseCode = "400",
-                    description = "Invalid input data"),
-            @ApiResponse(responseCode = "404",
-                    description = "User not found")
+            @ApiResponse(responseCode = "201", description = "QR code added to user successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid input data"),
+            @ApiResponse(responseCode = "404", description = "User not found")
     })
     @PostMapping("/user/{userId}/qrcodes")
     public ResponseEntity<QRCodeResponse> addQRCodeToUser(
@@ -219,10 +219,8 @@ public class QRCodeController
 
     @Operation(summary = "Search QR codes by content")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200",
-                    description = "QR codes retrieved successfully"),
-            @ApiResponse(responseCode = "400",
-                    description = "Invalid search parameters")
+            @ApiResponse(responseCode = "200", description = "QR codes retrieved successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid search parameters")
     })
     @GetMapping("/search")
     public ResponseEntity<List<QRCodeResponse>> searchQRCodesByContent(
@@ -231,8 +229,7 @@ public class QRCodeController
             @Parameter(description = "Whether to clear cache before searching")
             @RequestParam(required = false, defaultValue = "false") boolean clearCache)
     {
-        log.info("Searching QR codes with content: {}, clearCache: {}",
-                content, clearCache);
+        log.info("Searching QR codes with content: {}, clearCache: {}", content, clearCache);
         if (clearCache)
         {
             qrCodeService.clearContentSearchCache(content);

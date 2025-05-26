@@ -2,7 +2,7 @@ package com.example.qrcodegenerator.service;
 
 import com.example.qrcodegenerator.model.User;
 import com.example.qrcodegenerator.repository.UserRepository;
-import com.example.qrcodegenerator.util.SimpleCache;
+import com.example.qrcodegenerator.cache.SimpleCache;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
