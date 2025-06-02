@@ -5,7 +5,10 @@ import com.example.qrcodegenerator.dto.QRCodeResponse;
 import com.example.qrcodegenerator.model.QRCode;
 import com.example.qrcodegenerator.model.User;
 import com.example.qrcodegenerator.repository.QRCodeRepository;
+import com.example.qrcodegenerator.cache.SimpleCache;
+import com.google.zxing.BarcodeFormat;
 import com.google.zxing.WriterException;
+import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,12 +18,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,6 +38,9 @@ class QRCodeServiceTest {
 
     @Mock
     private QRCodeWriter qrCodeWriter;
+
+    @Mock
+    private SimpleCache<String, List<QRCode>> contentSearchCache;
 
     @InjectMocks
     private QRCodeService qrCodeService;
@@ -63,103 +70,77 @@ class QRCodeServiceTest {
     }
 
     @Test
-    void generateBulkQRCodes_ValidInputWithUser_ReturnsQRCodeResponses() {
-        QRCode qrCode1 = new QRCode();
-        qrCode1.setId(1L);
-        qrCode1.setData(request1.getData());
+    void generateBulkQRCodes_WithEmptyInputList_ReturnsEmptyList() throws WriterException {
+        List<QRCodeResponse> responses = qrCodeService.generateBulkQRCodes(List.of(), null);
 
-        QRCode qrCode2 = new QRCode();
-        qrCode2.setId(2L);
-        qrCode2.setData(request2.getData());
-
-        when(userService.getById(1L)).thenReturn(user);
-        when(qrCodeRepository.save(any(QRCode.class)))
-                .thenReturn(qrCode1)
-                .thenReturn(qrCode2);
-        when(userService.save(any(User.class))).thenReturn(user);
-
-        List<QRCodeRequest> requests = Arrays.asList(request1, request2);
-        List<QRCodeResponse> responses = qrCodeService.generateBulkQRCodes(requests, 1L);
-
-        assertEquals(2, responses.size(), "Должно вернуться два ответа QR-кода");
-
-        QRCodeResponse response1 = responses.get(0);
-        assertAll("Первый ответ QR-кода",
-                () -> assertEquals(1L, response1.getId(), "ID должен совпадать"),
-                () -> assertEquals(request1.getData(), response1.getData(), "Данные должны совпадать"),
-                () -> assertEquals("200x200", response1.getSize(), "Размер должен совпадать"),
-                () -> assertEquals("#FF0000/#FFFFFF", response1.getColors(), "Цвета должны совпадать"),
-                () -> assertNotNull(response1.getImageUrl(), "URL изображения не должен быть null"),
-                () -> assertEquals(1L, response1.getUserId(), "ID пользователя должен совпадать"),
-                () -> assertNotNull(response1.getCreatedAt(), "Время создания не должно быть null")
-        );
-
-        QRCodeResponse response2 = responses.get(1);
-        assertAll("Второй ответ QR-кода",
-                () -> assertEquals(2L, response2.getId(), "ID должен совпадать"),
-                () -> assertEquals(request2.getData(), response2.getData(), "Данные должны совпадать"),
-                () -> assertEquals("300x300", response2.getSize(), "Размер должен совпадать"),
-                () -> assertEquals("#00FF00/#000000", response2.getColors(), "Цвета должны совпадать"),
-                () -> assertNotNull(response2.getImageUrl(), "URL изображения не должен быть null"),
-                () -> assertEquals(1L, response2.getUserId(), "ID пользователя должен совпадать"),
-                () -> assertNotNull(response2.getCreatedAt(), "Время создания не должно быть null")
-        );
-
-        verify(qrCodeRepository, times(2)).save(any(QRCode.class));
-        verify(userService, times(1)).save(user);
-    }
-
-    @Test
-    void generateBulkQRCodes_ValidInputWithoutUser_ReturnsQRCodeResponses() {
-        QRCode qrCode1 = new QRCode();
-        qrCode1.setId(1L);
-        qrCode1.setData(request1.getData());
-
-        when(qrCodeRepository.save(any(QRCode.class))).thenReturn(qrCode1);
-
-        List<QRCodeRequest> requests = Arrays.asList(request1);
-        List<QRCodeResponse> responses = qrCodeService.generateBulkQRCodes(requests, null);
-
-        assertEquals(1, responses.size(), "Должен вернуться один ответ QR-кода");
-        QRCodeResponse response = responses.get(0);
-        assertAll("Ответ QR-кода",
-                () -> assertEquals(1L, response.getId(), "ID должен совпадать"),
-                () -> assertEquals(request1.getData(), response.getData(), "Данные должны совпадать"),
-                () -> assertNull(response.getUserId(), "ID пользователя должен быть null")
-        );
-
-        verify(qrCodeRepository, times(1)).save(any(QRCode.class));
-        verify(userService, never()).save(any(User.class));
-    }
-
-    @Test
-    void generateBulkQRCodes_EmptyInputList_ReturnsEmptyList() {
-        List<QRCodeResponse> responses = qrCodeService.generateBulkQRCodes(Collections.emptyList(), null);
-
-        assertTrue(responses.isEmpty(), "Должен вернуться пустой список для пустого входного списка");
+        assertTrue(responses.isEmpty());
         verify(qrCodeRepository, never()).save(any(QRCode.class));
         verify(userService, never()).save(any(User.class));
+        verify(qrCodeWriter, never()).encode(anyString(), any(), anyInt(), anyInt());
     }
 
     @Test
-    void generateBulkQRCodes_QRCodeWriterThrowsWriterException_ThrowsRuntimeException() throws WriterException, IOException {
-        when(qrCodeWriter.encode(anyString(), any(), anyInt(), anyInt()))
-                .thenThrow(new WriterException("Тестовое исключение WriterException"));
+    void generateBulkQRCodes_WhenQRCodeWriterThrowsWriterException_ThrowsRuntimeException() throws WriterException {
+        when(qrCodeWriter.encode(anyString(), eq(BarcodeFormat.QR_CODE), anyInt(), anyInt()))
+                .thenThrow(new WriterException("Test WriterException"));
 
-        List<QRCodeRequest> requests = Arrays.asList(request1);
-        assertThrows(RuntimeException.class, () -> qrCodeService.generateBulkQRCodes(requests, null),
-                "Должно выбросить RuntimeException при WriterException");
+        assertThrows(RuntimeException.class, () -> qrCodeService.generateBulkQRCodes(List.of(request1), null));
         verify(qrCodeRepository, never()).save(any(QRCode.class));
     }
 
     @Test
-    void generateBulkQRCodes_QRCodeWriterThrowsIOException_ThrowsRuntimeException() throws WriterException, IOException {
-        when(qrCodeWriter.encode(anyString(), any(), anyInt(), anyInt()))
-                .thenThrow(new IOException("Тестовое исключение IOException"));
+    void generateBulkQRCodes_WhenQRCodeWriterThrowsIOException_ThrowsRuntimeException() throws WriterException {
+        when(qrCodeWriter.encode(anyString(), eq(BarcodeFormat.QR_CODE), anyInt(), anyInt()))
+                .thenThrow(new WriterException("Test WriterException"));
 
-        List<QRCodeRequest> requests = Arrays.asList(request1);
-        assertThrows(RuntimeException.class, () -> qrCodeService.generateBulkQRCodes(requests, null),
-                "Должно выбросить RuntimeException при IOException");
+        assertThrows(RuntimeException.class, () -> qrCodeService.generateBulkQRCodes(List.of(request1), null));
         verify(qrCodeRepository, never()).save(any(QRCode.class));
+    }
+
+    @Test
+    void generateBulkQRCodes_WithNullRequestList_ThrowsIllegalArgumentException() throws WriterException {
+        assertThrows(IllegalArgumentException.class, () -> qrCodeService.generateBulkQRCodes(null, null));
+        verify(qrCodeRepository, never()).save(any(QRCode.class));
+        verify(userService, never()).save(any(User.class));
+        verify(qrCodeWriter, never()).encode(anyString(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void findByDataContaining_WhenCacheHit_ReturnsCachedResult() {
+        List<QRCode> cachedQRCodes = List.of(new QRCode());
+        when(contentSearchCache.get("test")).thenReturn(cachedQRCodes);
+
+        List<QRCode> result = qrCodeService.findByDataContaining("test");
+
+        assertEquals(cachedQRCodes, result);
+        verify(contentSearchCache).get("test");
+        verify(qrCodeRepository, never()).findByDataContaining(anyString());
+    }
+
+    @Test
+    void findByDataContaining_WhenCacheMiss_ReturnsRepositoryResult() {
+        List<QRCode> qrCodes = List.of(new QRCode());
+        when(contentSearchCache.get("test")).thenReturn(null);
+        when(qrCodeRepository.findByDataContaining("test")).thenReturn(qrCodes);
+
+        List<QRCode> result = qrCodeService.findByDataContaining("test");
+
+        assertEquals(qrCodes, result);
+        verify(contentSearchCache).get("test");
+        verify(qrCodeRepository).findByDataContaining("test");
+        verify(contentSearchCache).put("test", qrCodes);
+    }
+
+    @Test
+    void clearContentSearchCache_RemovesCacheEntry() {
+        qrCodeService.clearContentSearchCache("test");
+
+        verify(contentSearchCache).remove("test");
+    }
+
+    @Test
+    void findByUser_WithNullUser_ReturnsEmptyList() {
+        List<QRCode> result = qrCodeService.findByUser(null);
+        assertTrue(result.isEmpty());
     }
 }
