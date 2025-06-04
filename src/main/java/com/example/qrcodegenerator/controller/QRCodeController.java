@@ -2,7 +2,6 @@ package com.example.qrcodegenerator.controller;
 
 import com.example.qrcodegenerator.dto.QRCodeRequest;
 import com.example.qrcodegenerator.dto.QRCodeResponse;
-import com.example.qrcodegenerator.exception.ResourceNotFoundException;
 import com.example.qrcodegenerator.mapper.QRCodeMapper;
 import com.example.qrcodegenerator.model.QRCode;
 import com.example.qrcodegenerator.model.User;
@@ -14,7 +13,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import com.google.zxing.WriterException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -22,7 +20,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -30,13 +27,11 @@ import java.util.stream.Collectors;
 @Tag(name = "QR Code", description = "QR Code generation and management APIs")
 @RestController
 @RequestMapping("/api/qrcodes")
-public class QRCodeController
-{
+public class QRCodeController {
     private final QRCodeService qrCodeService;
     private final UserService userService;
 
-    public QRCodeController(QRCodeService qrCodeService, UserService userService)
-    {
+    public QRCodeController(QRCodeService qrCodeService, UserService userService) {
         this.qrCodeService = qrCodeService;
         this.userService = userService;
     }
@@ -50,34 +45,40 @@ public class QRCodeController
     @GetMapping("/generate")
     public ResponseEntity<byte[]> generateQRCode(
             @Parameter(description = "Text to encode in QR code")
-            @RequestParam String text)
-    {
-        try
-        {
-            log.info("Generating QR code for text: {}", text);
-            byte[] qrCodeImage = qrCodeService.generateQRCode(text);
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.IMAGE_PNG);
-            headers.setContentLength(qrCodeImage.length);
-            return ResponseEntity.ok().headers(headers).body(qrCodeImage);
-        }
-        catch (WriterException | IOException e)
-        {
-            log.error("Error generating QR code: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
+            @RequestParam String text) {
+        qrCodeService.getRequestCount();
+        byte[] qrCodeImage = qrCodeService.generateQRCode(text);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.IMAGE_PNG);
+        headers.setContentLength(qrCodeImage.length);
+        return ResponseEntity.ok().headers(headers).body(qrCodeImage);
+    }
+
+    @Operation(summary = "Get request count")
+    @ApiResponse(responseCode = "200", description = "Request count retrieved successfully")
+    @GetMapping("/request-count")
+    public ResponseEntity<Long> getRequestCount() {
+        qrCodeService.getRequestCount();
+        return ResponseEntity.ok(qrCodeService.getRequestCount());
+    }
+
+    @Operation(summary = "Reset request count")
+    @ApiResponse(responseCode = "200", description = "Request count reset successfully")
+    @PostMapping("/request-count/reset")
+    public ResponseEntity<Void> resetRequestCount() {
+        qrCodeService.getRequestCount();
+        qrCodeService.resetRequestCount();
+        return ResponseEntity.ok().build();
     }
 
     @Operation(summary = "Get all QR codes")
     @ApiResponse(responseCode = "200", description = "List of all QR codes retrieved successfully")
     @GetMapping
-    public ResponseEntity<List<QRCodeResponse>> getAllQRCodes()
-    {
-        log.info("Fetching all QR codes");
-        List<QRCodeResponse> response = qrCodeService.findAll().stream()
+    public ResponseEntity<List<QRCodeResponse>> getAllQRCodes() {
+        qrCodeService.getRequestCount();
+        return ResponseEntity.ok(qrCodeService.findAll().stream()
                 .map(QRCodeMapper::toDTO)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(response);
+                .collect(Collectors.toList()));
     }
 
     @Operation(summary = "Create new QR code")
@@ -91,14 +92,12 @@ public class QRCodeController
             @Parameter(description = "QR code creation request")
             @Valid @RequestBody QRCodeRequest qrCodeRequest,
             @Parameter(description = "Optional user ID to associate with QR code")
-            @RequestParam(required = false) Long userId)
-    {
-        log.info("Creating new QR code with data: {}", qrCodeRequest.getData());
+            @RequestParam(required = false) Long userId) {
+        qrCodeService.getRequestCount();
         QRCode qrCode = new QRCode();
         qrCode.setData(qrCodeRequest.getData());
 
-        if (userId != null)
-        {
+        if (userId != null) {
             User user = userService.getById(userId);
             user.addQRCode(qrCode);
             userService.save(user);
@@ -119,9 +118,8 @@ public class QRCodeController
             @Parameter(description = "List of QR code creation requests")
             @Valid @RequestBody List<QRCodeRequest> qrCodeRequests,
             @Parameter(description = "Optional user ID to associate with QR codes")
-            @RequestParam(required = false) Long userId)
-    {
-        log.info("Creating bulk QR codes, count: {}", qrCodeRequests.size());
+            @RequestParam(required = false) Long userId) {
+        qrCodeService.getRequestCount();
         List<QRCodeResponse> responses = qrCodeService.generateBulkQRCodes(qrCodeRequests, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(responses);
     }
@@ -134,9 +132,8 @@ public class QRCodeController
     @GetMapping("/{id}")
     public ResponseEntity<QRCodeResponse> getQRCodeById(
             @Parameter(description = "ID of QR code to retrieve")
-            @PathVariable Long id)
-    {
-        log.info("Fetching QR code with ID: {}", id);
+            @PathVariable Long id) {
+        qrCodeService.getRequestCount();
         QRCode qrCode = qrCodeService.getById(id);
         return ResponseEntity.ok(QRCodeMapper.toDTO(qrCode));
     }
@@ -152,9 +149,8 @@ public class QRCodeController
             @Parameter(description = "ID of QR code to update")
             @PathVariable Long id,
             @Parameter(description = "Updated QR code data")
-            @Valid @RequestBody QRCodeRequest qrCodeRequest)
-    {
-        log.info("Updating QR code with ID: {}", id);
+            @Valid @RequestBody QRCodeRequest qrCodeRequest) {
+        qrCodeService.getRequestCount();
         QRCode existingQRCode = qrCodeService.getById(id);
         existingQRCode.setData(qrCodeRequest.getData());
         QRCode updatedQRCode = qrCodeService.save(existingQRCode);
@@ -169,9 +165,8 @@ public class QRCodeController
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteQRCode(
             @Parameter(description = "ID of QR code to delete")
-            @PathVariable Long id)
-    {
-        log.info("Deleting QR code with ID: {}", id);
+            @PathVariable Long id) {
+        qrCodeService.getRequestCount();
         qrCodeService.deleteById(id);
         return ResponseEntity.noContent().build();
     }
@@ -184,14 +179,12 @@ public class QRCodeController
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<QRCodeResponse>> getQRCodesByUser(
             @Parameter(description = "ID of user to retrieve QR codes for")
-            @PathVariable Long userId)
-    {
-        log.info("Fetching QR codes for user ID: {}", userId);
+            @PathVariable Long userId) {
+        qrCodeService.getRequestCount();
         User user = userService.getById(userId);
-        List<QRCodeResponse> response = qrCodeService.findByUser(user).stream()
+        return ResponseEntity.ok(qrCodeService.findByUser(user).stream()
                 .map(QRCodeMapper::toDTO)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(response);
+                .collect(Collectors.toList()));
     }
 
     @Operation(summary = "Add QR code to user")
@@ -205,9 +198,8 @@ public class QRCodeController
             @Parameter(description = "ID of user to add QR code to")
             @PathVariable Long userId,
             @Parameter(description = "QR code creation request")
-            @Valid @RequestBody QRCodeRequest qrCodeRequest)
-    {
-        log.info("Adding QR code to user ID: {}", userId);
+            @Valid @RequestBody QRCodeRequest qrCodeRequest) {
+        qrCodeService.getRequestCount();
         User user = userService.getById(userId);
         QRCode qrCode = new QRCode();
         qrCode.setData(qrCodeRequest.getData());
@@ -227,19 +219,15 @@ public class QRCodeController
             @Parameter(description = "Content to search for")
             @RequestParam String content,
             @Parameter(description = "Whether to clear cache before searching")
-            @RequestParam(required = false, defaultValue = "false") boolean clearCache)
-    {
-        log.info("Searching QR codes with content: {}, clearCache: {}", content, clearCache);
-        if (clearCache)
-        {
+            @RequestParam(required = false, defaultValue = "false") boolean clearCache) {
+        qrCodeService.getRequestCount();
+        if (clearCache) {
             qrCodeService.clearContentSearchCache(content);
         }
 
-        List<QRCodeResponse> response = qrCodeService.findByDataContaining(content)
+        return ResponseEntity.ok(qrCodeService.findByDataContaining(content)
                 .stream()
                 .map(QRCodeMapper::toDTO)
-                .collect(Collectors.toList());
-
-        return ResponseEntity.ok(response);
+                .collect(Collectors.toList()));
     }
 }
