@@ -22,8 +22,15 @@ public class UserController
     @GetMapping
     public ResponseEntity<List<User>> getAllUsers()
     {
-        List<User> users = userService.findAll();
-        return ResponseEntity.ok(users);
+        try {
+            List<User> users = userService.findAll();
+            if (users.isEmpty()) {
+                return ResponseEntity.noContent().build();
+            }
+            return ResponseEntity.ok(users);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
     }
 
     @PostMapping
@@ -36,22 +43,34 @@ public class UserController
     @GetMapping("/{id}")
     public ResponseEntity<User> getUserById(@PathVariable Long id)
     {
-        User user = userService.getById(id);
-        return ResponseEntity.ok(user);
+        try {
+            User user = userService.getById(id);
+            return ResponseEntity.ok(user);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<User> updateUser(@PathVariable Long id, @RequestBody User user)
     {
-        User updatedUser = userService.updateUser(id, user);
-        return ResponseEntity.ok(updatedUser);
+        try {
+            User updatedUser = userService.updateUser(id, user);
+            return ResponseEntity.ok(updatedUser);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id)
     {
-        userService.deleteById(id);
-        return ResponseEntity.noContent().build();
+        try {
+            userService.deleteById(id);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     @GetMapping("/search")

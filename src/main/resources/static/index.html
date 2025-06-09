@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Manager</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <script src="/js/script.js" defer></script>
+</head>
+<body>
+<div class="container mx-auto p-4">
+    <h1 class="text-3xl font-bold mb-6 text-gray-800">QR Code Manager</h1>
+
+    <div class="card">
+        <h2 class="text-xl font-semibold mb-4">Users</h2>
+        <select id="userSelect" class="form-input mb-4" multiple>
+            <option value="">Select Users</option>
+            <option th:each="user : ${users}" th:value="${user.id}" th:text="${user.name} + ' (' + ${user.email} + ')'"></option>
+        </select>
+
+        <form th:action="@{/api/users}" th:method="post" class="mb-4">
+            <div class="form-group">
+                <input class="form-input" type="text" name="name" placeholder="Name" required />
+            </div>
+            <div class="form-group">
+                <input class="form-input" type="email" name="email" placeholder="Email" required />
+            </div>
+            <button type="submit" class="btn btn-primary">Add User</button>
+        </form>
+    </div>
+
+    <div class="card" id="qrcodeSection" style="display: none;">
+        <h2 class="text-xl font-semibold mb-4">QR Codes for Selected Users</h2>
+        <ul id="qrcodeList" class="list-disc pl-5 mb-4"></ul>
+
+        <form id="addQRCodeForm" th:action="@{/api/qrcodes}" th:method="post" class="mb-4">
+            <div class="form-group">
+                <input class="form-input" type="text" name="data" placeholder="QR Code Data" required />
+                <input type="hidden" name="userIds" id="selectedUserIds" />
+            </div>
+            <button type="submit" class="btn btn-primary">Add QR Code</button>
+        </form>
+    </div>
+
+    <div class="card" id="editQRCodeSection" style="display: none;">
+        <h2 class="text-xl font-semibold mb-4">Edit QR Code</h2>
+        <form id="editQRCodeForm" th:action="@{/api/qrcodes/{id}(id=${param.id})}" th:method="put" class="mb-4">
+            <div class="form-group">
+                <input class="form-input" type="text" name="data" id="editData" required />
+                <input type="hidden" name="userIds" id="editUserIds" />
+            </div>
+            <button type="submit" class="btn btn-primary">Update QR Code</button>
+            <button type="button" class="btn btn-danger ml-2" onclick="cancelEdit()">Cancel</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>

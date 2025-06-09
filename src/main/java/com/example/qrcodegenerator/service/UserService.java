@@ -24,7 +24,9 @@ public class UserService
 
     public List<User> findAll()
     {
-        return userRepository.findAll();
+        List<User> users = userRepository.findAll();
+        log.info("Fetched {} users from database", users.size());
+        return users;
     }
 
     public User save(User user)
@@ -35,8 +37,7 @@ public class UserService
     public User getById(Long id)
     {
         return userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " +
-                        id));
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
     }
 
     public User updateUser(Long id, User userDetails)

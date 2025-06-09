@@ -18,6 +18,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,7 +26,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Tag(name = "QR Code", description = "QR Code generation and management APIs")
-@RestController
+@Controller
 @RequestMapping("/api/qrcodes")
 public class QRCodeController {
     private final QRCodeService qrCodeService;
@@ -34,6 +35,11 @@ public class QRCodeController {
     public QRCodeController(QRCodeService qrCodeService, UserService userService) {
         this.qrCodeService = qrCodeService;
         this.userService = userService;
+    }
+
+    @GetMapping("/")
+    public String home() {
+        return "index";
     }
 
     @Operation(summary = "Generate QR code image")
